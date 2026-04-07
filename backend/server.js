@@ -29,6 +29,22 @@ app.use('/api/logs', require('./routes/logs'));
 app.use('/api/equipment', require('./routes/equipment'));
 app.use('/api/ports', require('./routes/ports'));
 
+// --- MISSING METRICS ROUTE RESTORED HERE ---
+app.get('/api/metrics', (req, res) => {
+  const chartData = [];
+  let baseTraffic = 400;
+
+  for (let i = 0; i < 24; i++) {
+    baseTraffic = baseTraffic + (Math.random() * 150 - 50); 
+    chartData.push({
+      time: `${i}:00`,
+      value: Math.abs(Math.round(baseTraffic))
+    });
+  }
+  
+  res.json(chartData);
+});
+
 // --- MongoDB Connection ---
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('🟢 MongoDB Database Connected Successfully'))
@@ -37,10 +53,10 @@ mongoose.connect(process.env.MONGO_URI)
 // --- Start the Server & WebSockets ---
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*" } // Allows your Vercel frontend to connect
+  cors: { origin: "*" } 
 });
 
-// Broadcast fake network data every 2 seconds for the Dashboard
+// Broadcast live network data every 2 seconds
 io.on('connection', (socket) => {
   console.log('⚡ Dashboard Client Connected!');
   

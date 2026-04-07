@@ -2,23 +2,47 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Cpu, Activity, Thermometer, Zap } from 'lucide-react';
-import { API_URL } from './config';
+import { API_URL, SOCKET_URL } from './config';
+import io from 'socket.io-client'; // <--- The Walkie-Talkie!
 
 export default function Dashboard() {
   const [networkData, setNetworkData] = useState([]);
+  const [currentTraffic, setCurrentTraffic] = useState(0);
 
   useEffect(() => {
+    // 1. Fetch the initial 24-hour history first
     const fetchMetrics = async () => {
       try {
         const res = await fetch(`${API_URL}/metrics`);
         const data = await res.json();
         setNetworkData(data);
+        if (data.length > 0) setCurrentTraffic(data[data.length - 1].value);
       } catch (error) {
         console.error("Error fetching metrics:", error);
       }
     };
-    
     fetchMetrics();
+
+    // 2. Open the live WebSocket connection
+    const socket = io(SOCKET_URL);
+
+    // 3. Listen for the backend broadcasting new data every 2 seconds
+    socket.on('network-update', (newData) => {
+      // Map the backend 'traffic' key to the chart's 'value' key
+      const formattedData = { time: newData.time, value: newData.traffic };
+      
+      setCurrentTraffic(newData.traffic);
+
+      // Add the new point to the end of the chart, and remove the oldest point so it scrolls!
+      setNetworkData((prevData) => {
+        const newArray = [...prevData, formattedData];
+        if (newArray.length > 20) newArray.shift(); // Keep only the last 20 points
+        return newArray;
+      });
+    });
+
+    // Clean up the connection if the user leaves the page
+    return () => socket.disconnect();
   }, []);
 
   return (
@@ -39,7 +63,8 @@ export default function Dashboard() {
       {/* --- Top Stat Cards --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard icon={<Cpu size={20} />} label="Global CPU Load" value="42%" trend="+2.4%" isGood={false} />
-        <StatCard icon={<Activity size={20} />} label="Network Traffic" value="840 Gbps" trend="+14%" isGood={true} />
+        {/* The Network card now updates instantly too! */}
+        <StatCard icon={<Activity size={20} />} label="Network Traffic" value={`${currentTraffic} Gbps`} trend="LIVE" isGood={true} />
         <StatCard icon={<Thermometer size={20} />} label="Avg Temperature" value="22°C" trend="-0.5°C" isGood={false} />
         <StatCard icon={<Zap size={20} />} label="Power Draw" value="1.2 MW" trend="Stable" isGood={true} />
       </div>
@@ -47,13 +72,12 @@ export default function Dashboard() {
       {/* --- Live Chart --- */}
       <div className="bg-dcPanel p-6 rounded-xl border border-dcDarkGreen/20 shadow-xl flex-1 min-h-[400px] flex flex-col mt-4">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-white">24h Network Throughput</h3>
-          <span className="text-xs text-gray-500 font-mono">LIVE DATACENTER FEED</span>
+          <h3 className="text-lg font-bold text-white">Live Network Throughput</h3>
+          <span className="text-xs text-dcLeafGreen font-mono animate-pulse">● LIVE DATACENTER FEED</span>
         </div>
         
         <div className="flex-1 w-full h-full min-h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            {/* The chart is now using your live 'networkData' state! */}
             <AreaChart data={networkData}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -62,14 +86,10 @@ export default function Dashboard() {
                 </linearGradient>
               </defs>
               <XAxis dataKey="time" stroke="#4b5563" fontSize={12} tickMargin={10} />
-              <YAxis stroke="#4b5563" fontSize={12} tickMargin={10} />
+              <YAxis stroke="#4b5563" fontSize={12} tickMargin={10} domain={['auto', 'auto']} />
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', color: '#fff', borderRadius: '8px' }}
-                itemStyle={{ color: '#4ade80' }}
-              />
-              {/* Changed dataKey to "value" to match the backend! */}
-              <Area type="monotone" dataKey="value" stroke="#4ade80" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', color: '#fff', borderRadius: '8px' }} itemStyle={{ color: '#4ade80' }} />
+              <Area type="monotone" dataKey="value" stroke="#4ade80" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -88,7 +108,7 @@ const StatCard = ({ icon, label, value, trend, isGood }) => (
       <div className="p-2 bg-dcBlack rounded-lg text-dcLeafGreen border border-dcDarkGreen/30">
         {icon}
       </div>
-      <span className={`text-xs font-mono px-2 py-1 rounded bg-dcBlack border ${isGood ? 'text-dcLeafGreen border-dcLeafGreen/30' : 'text-red-400 border-red-500/30'}`}>
+      <span className={`text-xs font-mono px-2 py-1 rounded bg-dcBlack border ${trend === 'LIVE' ? 'text-dcLeafGreen border-dcLeafGreen animate-pulse' : isGood ? 'text-dcLeafGreen border-dcLeafGreen/30' : 'text-red-400 border-red-500/30'}`}>
         {trend}
       </span>
     </div>
