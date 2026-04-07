@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Network, Zap, Shield, Link2, Activity } from 'lucide-react';
-
+import { API_URL } from './config';
 export default function PortTracker() {
   const [ports, setPorts] = useState([]);
   const [selectedPort, setSelectedPort] = useState(null);
 
   const fetchPorts = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/ports');
+      const res = await fetch(`${API_URL}/ports`);
       const data = await res.json();
       setPorts(data);
       // Update selected port details if one is actively selected
@@ -31,20 +31,9 @@ export default function PortTracker() {
     if (!emptyPort) return alert("Switch is fully populated!");
 
     try {
-      await fetch(`http://localhost:5001/api/ports/${emptyPort.portId}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-admin-key': 'admin2026' // The Security Badge!
-        },
-        body: JSON.stringify({
-          status: 'active',
-          device: `SRV-RACK-A${Math.ceil(Math.random() * 9)}`,
-          mac: `00:1A:2B:3C:${Math.floor(Math.random() * 90 + 10)}:${Math.floor(Math.random() * 90 + 10)}`,
-          speed: '10 Gbps',
-          vlan: Math.ceil(Math.random() * 4) * 10
-        })
-      });
+      await fetch(`${API_URL}/ports/${emptyPort.portId}`, {
+  // ... headers and body stay the same ...
+});
       
       // Refresh the ports after a successful patch
       fetchPorts();

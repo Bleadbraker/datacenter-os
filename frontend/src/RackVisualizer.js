@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Server, Database, Cpu, Info } from 'lucide-react';
+import { API_URL } from './config'; // <--- The smart address book!
 
 export default function RackVisualizer() {
   const [rackItems, setRackItems] = useState([]);
@@ -17,7 +18,7 @@ export default function RackVisualizer() {
   // --- API Calls ---
   const fetchEquipment = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/equipment');
+      const res = await fetch(`${API_URL}/equipment`);
       const data = await res.json();
       setRackItems(data);
     } catch (error) {
@@ -30,26 +31,25 @@ export default function RackVisualizer() {
   }, []);
 
   const deployServer = async () => {
-    // Generate valid random server data for the database
     const types = ['Server', 'Storage', 'Network'];
     const newEquipment = {
       name: `SRV-DCX-${Math.floor(Math.random() * 900) + 100}`,
       type: types[Math.floor(Math.random() * types.length)],
-      startU: Math.floor(Math.random() * 38) + 4, // Random spot in the rack
+      startU: Math.floor(Math.random() * 38) + 4,
       size: 2,
       status: 'online'
     };
 
     try {
-      await fetch('http://localhost:5001/api/equipment', {
+      await fetch(`${API_URL}/equipment`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-admin-key': 'admin2026' // The Security Badge
+          'x-admin-key': 'admin2026'
         },
         body: JSON.stringify(newEquipment)
       });
-      fetchEquipment(); // Refresh the visualizer
+      fetchEquipment(); 
     } catch (error) {
       console.error("Error deploying server:", error);
     }

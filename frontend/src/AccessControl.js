@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Search, ShieldAlert, Clock, UserX, CheckCircle2, Fingerprint, Plus } from 'lucide-react';
-
+import { API_URL } from './config';
 export default function AccessControl() {
   const [logs, setLogs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,7 +17,7 @@ export default function AccessControl() {
   // 2. Fetch data from your new Node.js Backend
   const fetchLogs = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/logs');
+      const res = await fetch(`${API_URL}/logs`);
       const data = await res.json();
       
       if (Array.isArray(data)) {
@@ -49,14 +49,9 @@ export default function AccessControl() {
     };
 
     try {
-      await fetch('http://localhost:5001/api/logs', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-admin-key': 'admin2026'
-        },
-        body: JSON.stringify(newScan)
-      });
+      await fetch(`${API_URL}/logs`, {
+  // ... your headers and body stay exactly the same ...
+});
       
       fetchLogs(); 
     } catch (error) {
